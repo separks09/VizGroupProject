@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<title>Turnovers Win Championships </title>
+	<link href='http://fonts.googleapis.com/css?family=UnifrakturMaguntia' rel='stylesheet' type='text/css'>
+	<link href='http://fonts.googleapis.com/css?family=Montserrat' rel='stylesheet' type='text/css'>
+	<link rel="stylesheet" href="static/style.css">
+	<script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.0/umd/popper.min.js" integrity="sha384-cs/chFZiN24E4KMATLdqdvsezGxaGsi4hLGOzlXwp5UZB1LY//20VyM2taTB4QvJ" crossorigin="anonymous"></script>
+	<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.0/js/bootstrap.min.js" integrity="sha384-uefMccjFJAIv6A+rW+L4AHf99KvxDjWSu1z9VI8SKNVmz4sk7buKt/6v9KI65qnm" crossorigin="anonymous"></script>
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+</head>
+<body>
+	<h2>Rushing Wins Championships</h2>
+	<div class="btn-group" role="group" aria-label="...">
+			<a href='/'>
+				<button type="button" class="btn btn-default">Turnovers</button>
+			</a>
+			<a href='/pass_yards'>
+				<button type="button" class="btn btn-default">Passing Yard</button>
+			</a>
+			<a href='/rush_yards'>
+				<button type="button" class="btn btn-default">Rushing Yard</button>
+			</a>
+			<a href='/data.json'>
+			<button type="button" class="btn btn-default">Data</button>
+			</a>
+		  </div>
+
+	<p id="chart"></p>
+
+	<script src="static/d3.js"></script>
+	<script>
+		// Various accessors that specify the four dimensions of data to visualize.
+		function x(d) { return d.horizontal; }
+		function y(d) { return d.vertical; }
+		function radius(d) { return d.circleSize*1.5; }
+		function color(d) { return d.region; }
+		function key(d) { return d.name; }
+
+		// Chart dimensions.
+		var 	margin = {top: 19.5, right: 19.5, bottom: 19.5, left: 39.5},
+				width = 1024 - margin.right,
+				height = 640 - margin.top - margin.bottom;
+
+		// Various scales. These domains make assumptions of data, naturally.
+		//var xScale = d3.scale.log().domain([0, 1e5]).range([0, width]),
+		var 	xScale = d3.scale.linear().domain([1000, 3000]).range([0, width]),  
+				yScale = d3.scale.linear().domain([1000, 3000]).range([height, 0]),
+				radiusScale = d3.scale.linear().domain([0, 50]).range([0, 100]),
+				//colorScale = d3.scale.category10();
+				colorScale = d3.scale.ordinal()
+					.range([ 
+						'#C83803',//Bears
+						'#FB4F14',//Bengals
+						'#00338D',//Bills
+						'#FC4C02', //Broncos
+						'#FF3C00', //Browns
+						'#C8102E', //Bucs
+						"#97233F",//Cardinals
+						'#0073CF', //Chargers
+						'#C8102E', //Chiefs
+						'#003A70', //Colts
+						'#869397', //Cowboys
+						'#008E97', //Dolphins
+						'#004953', //Eagles
+						"#A71930", //Falcons
+						'#A6192E', //49ers
+						'#0B2265', //Giants
+						'#9A7611', //Jags
+						'#203731', //Jets
+						'#005A8B', //Lions
+						'#418FDE', //Oilers
+						'#183028', //Packers
+						'#0085CA', //Panthers
+						'#002244', //Patriots
+						'#87909A', //Raiders
+						'#041E42', //Rams
+						"#241773", //Ravens
+						'#773141', //Redskins
+						'#D3BC8D', //Saints
+						'#69BE28', //Seahawks
+						'#FFB81C', //Steelers
+						'#03202F', //Texans
+						'#002244', //Titans
+						'#4F2683' //Vikings
+						]
+					);
+
+		// The x & y axes.
+		var 	xAxis = d3.svg.axis().orient("bottom").scale(xScale).ticks(12, d3.format(",d")),
+				yAxis = d3.svg.axis().scale(yScale).orient("left");
+
+		// Create the SVG container and set the origin.
+		var 	svg = d3.select("#chart").append("svg")
+					.attr("width", width + margin.left + margin.right)
+					.attr("height", height + margin.top + margin.bottom)
+					.append("g")
+					.attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+				// Add the x-axis.
+				svg.append("g")
+					.attr("class", "x axis")
+					.attr("transform", "translate(0," + height + ")")
+					.call(xAxis);
+
+				// Add the y-axis.
+				svg.append("g")
+					.attr("class", "y axis")
+					.call(yAxis);
+
+				// Add an x-axis label.
+				svg.append("text")
+					.attr("class", "x label")
+					.attr("text-anchor", "end")
+					.attr("x", width)
+					.attr("y", height - 6)
+					.text("Rushing Yards");
+
+				// Add a y-axis label.
+				svg.append("text")
+					.attr("class", "y label")
+					.attr("text-anchor", "end")
+					.attr("y", 6)
+					.attr("dy", ".75em")
+					.attr("transform", "rotate(-90)")
+					.text("Rushing Yards Allowed");
+
+				// Add the year label; the value is set on transition.
+				var label = svg.append("text")
+					.attr("class", "year label")
+					.attr("text-anchor", "end")
+					.attr("y", height - 24)
+					.attr("x", width)
+					.text(1970);
+
+		// Load the data.
+		d3.json("data.json", function(parliment) {
+
+		// A bisector since many nation's data is sparsely-defined.
+		var bisect = d3.bisector(function(d) { return d[0]; });
+
+		// Add a dot per nation. Initialize the data at 1945, and set the colors.
+		var dot = svg.append("g")
+			.attr("class", "dots")
+			.selectAll(".dot")
+			.data(interpolateData(19))
+			.enter().append("circle")
+			.attr("class", "dot")
+			.style("fill", function(d) { return colorScale(color(d)); })
+			.style('opacity',.8)
+			.call(position)
+			.sort(order);
+
+		// Add a title.
+		dot.append("title")
+			.text(function(d) { return d.name; });
+
+		// Add an overlay for the year label.
+		var box = label.node().getBBox();
+
+		var overlay = svg.append("rect")
+				.attr("class", "overlay")
+				.attr("x", box.x)
+				.attr("y", box.y)
+				.attr("width", box.width)
+				.attr("height", box.height)
+				.on("mouseover", enableInteraction);
+
+		// Start a transition that interpolates the data based on year.
+		svg.transition()
+			.duration(30000)
+			.ease("linear")
+			.tween("year", tweenYear)
+			.each("end", enableInteraction);
+
+		// Positions the dots based on data.
+		function position(dot) {
+			dot 	.attr("cx", function(d) { return xScale(x(d)); })
+					.attr("cy", function(d) { return yScale(y(d)); })
+					.attr("r", function(d) { return radiusScale(radius(d)); });
+		}
+
+		// Defines a sort order so that the smallest dots are drawn on top.
+		function order(a, b) {
+			return radius(b) - radius(a);
+		}
+
+		// After the transition finishes, you can mouseover to change the year.
+		function enableInteraction() {
+			var yearScale = d3.scale.linear()
+				.domain([1989, 2017])
+				.range([box.x + 10, box.x + box.width - 10])
+				.clamp(true);
+
+			// Cancel the current transition, if any.
+			svg.transition().duration(0);
+
+			overlay
+				.on("mouseover", mouseover)
+				.on("mouseout", mouseout)
+				.on("mousemove", mousemove)
+				.on("touchmove", mousemove);
+
+			function mouseover() {
+			label.classed("active", true);
+			}
+
+			function mouseout() {
+			label.classed("active", false);
+			}
+
+			function mousemove() {
+			displayYear(yearScale.invert(d3.mouse(this)[0]));
+			}
+		}
+
+		// Tweens the entire chart by first tweening the year, and then the data.
+		// For the interpolated data, the dots and label are redrawn.
+		function tweenYear() {
+			var year = d3.interpolateNumber(1989, 2017);
+			return function(t) { displayYear(year(t)); };
+		}
+
+		// Updates the display to show the specified year.
+		function displayYear(year) {
+			dot.data(interpolateData(year), key).call(position).sort(order);
+			label.text(Math.round(year));
+		}
+
+		// Interpolates the dataset for the given (fractional) year.
+		function interpolateData(year) {
+			return parliment.map(function(d) {
+			return {
+				name: d.team,
+				region: d.team,
+				circleSize: interpolateValues(d.win, year),
+				horizontal: interpolateValues(d.rush_yds, year),
+				vertical: interpolateValues(d.opp_rush_yds, year)
+			};
+			});
+		}
+
+		// Finds (and possibly interpolates) the value for the specified year.
+		function interpolateValues(values, year) {
+			var i = bisect.left(values, year, 0, values.length - 1),
+				a = values[i];
+			if (i > 0) {
+			var b = values[i - 1],
+				t = (year - a[0]) / (b[0] - a[0]);
+			return a[1] * (1 - t) + b[1] * t;
+			}
+			return a[1];
+		}
+		});
+	</script>
+	</body>
+</html>
